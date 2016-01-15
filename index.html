@@ -9,7 +9,17 @@
     <button>Sample Volume</button>
     <script>
       streamFunc = function(stream) {
-        var talks = ["A", "B", "C"];
+        var talks = [
+          "Autism Caregiver",
+          "Dusty Does Python",
+          // Gogo
+          "Interactive Dashboard",
+          // David Beazley
+          "BusTracker Tracker",
+          "Crime Prediction",
+          "Google Trends VIX",
+          "idkwhatdoyouwant"
+        ];
         var index = 0;
         var b = document.querySelector("button");
         var clicked = false;
@@ -17,37 +27,43 @@
         var count = 0;
         var ac = new AudioContext();
         var source = ac.createMediaStreamSource(stream);
+        var elem;
+        elem = document.createElement('div')
+        elem.innerHTML = talks[index] + ": "
+        document.body.appendChild(elem);
         window.audioSource = source
         var scriptNode = ac.createScriptProcessor(4096, 1, 1);
         source.connect(scriptNode);
         scriptNode.onaudioprocess = function(audioProcessingEvent) {
-          var inputBuffer = audioProcessingEvent.inputBuffer;
-          for (var channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
-            var inputData = inputBuffer.getChannelData(channel);
-            for (var sample = 0; sample < inputBuffer.length; sample++) {
-              var value = inputData[sample]
-              total += Math.sqrt(value * value);
-              count += 1;
+        var inputBuffer = audioProcessingEvent.inputBuffer;
+        for (var channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+          var inputData = inputBuffer.getChannelData(channel);
+          for (var sample = 0; sample < inputBuffer.length; sample++) {
+            var value = inputData[sample]
+            total += value * value;
+            count += 1;
             }
           }
         }
 
-       b.addEventListener("click", function(e) {
-         if (!clicked) {
-           console.log(talks[index]);
-           total = 0;
-           count = 0;
-           e.target.innerHTML = "Stop Sampling";
-           clicked = true;
-         } else {
-           console.log(100 * total / count);
-           e.target.innerHTML = "Sample Volume";
-           clicked = false;
-           index += 1;
-         }
-       });
-     };
-     navigator.mediaDevices.getUserMedia({audio: true}).then(streamFunc);
+        b.addEventListener("click", function(e) {
+          if (!clicked) {
+            total = 0;
+            count = 0;
+            e.target.innerHTML = "Stop Sampling";
+            clicked = true;
+          } else {
+            elem.innerHTML = elem.innerHTML + 100 * Math.sqrt(total / count);
+            e.target.innerHTML = "Sample Volume";
+            clicked = false;
+            index += 1;
+            elem = document.createElement('div')
+            elem.innerHTML = talks[index] + ": "
+            document.body.appendChild(elem);
+          }
+        });
+      };
+      navigator.mediaDevices.getUserMedia({audio: true}).then(streamFunc);
     </script>
   </body>
 </html>
