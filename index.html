@@ -1,15 +1,23 @@
 <!DOCTYPE html>
+<meta charset="UTF-8">
 <html>
   <head>
     <title>Volume Sampler</title>
   </head>
   <body>
-    <h1>Volume Sampler</h1>
-
-    <button>Sample Volume</button>
+    <a href="https://github.com/agfor/volumesampler"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>
+    <div id="audio" style="margin-top: 200px;">
+      <h1>Volume Sampler</h1>
+      <button>Sample Volume</button>
+    </div>
     <script>
-      streamFunc = function(stream) {
-        var talks = [
+      "use strict";
+      navigator.getUserMedia = navigator.getUserMedia ||
+        navigator.webkitGetUserMedia ||
+        navigator.mozGetUserMedia;
+
+      var VolumeSampler = {
+        talks: [
           "Autism Caregiver",
           "Dusty Does Python",
           // Gogo
@@ -19,51 +27,66 @@
           "Crime Prediction",
           "Google Trends VIX",
           "idkwhatdoyouwant"
-        ];
-        var index = 0;
-        var b = document.querySelector("button");
-        var clicked = false;
-        var total = 0;
-        var count = 0;
-        var ac = new AudioContext();
-        var source = ac.createMediaStreamSource(stream);
-        var elem;
-        elem = document.createElement('div')
-        elem.innerHTML = talks[index] + ": "
-        document.body.appendChild(elem);
-        window.audioSource = source
-        var scriptNode = ac.createScriptProcessor(4096, 1, 1);
-        source.connect(scriptNode);
-        scriptNode.onaudioprocess = function(audioProcessingEvent) {
-        var inputBuffer = audioProcessingEvent.inputBuffer;
-        for (var channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
-          var inputData = inputBuffer.getChannelData(channel);
-          for (var sample = 0; sample < inputBuffer.length; sample++) {
-            var value = inputData[sample]
-            total += value * value;
-            count += 1;
+        ],
+        index: 0,
+        count: 0,
+        total: 0,
+        clicked: false,
+        container: undefined,
+        start: function (button, container) {
+          this.container = container;
+          button.addEventListener("click", this.takeSample.bind(this));
+          navigator.getUserMedia(
+            {audio: true},
+            this.streamFunc.bind(this),
+            function (e) { console.log(e); }
+          );
+        },
+        nextVote: function () {
+          var elem = document.createElement('div')
+          elem.innerHTML = this.talks[this.index] + ": "
+          this.container.appendChild(elem);
+        },
+        onaudioprocess: function (audioProcessingEvent) {
+          if (this.clicked) {
+            var inputBuffer = audioProcessingEvent.inputBuffer;
+            for (var channel = 0; channel < inputBuffer.numberOfChannels; channel++) {
+              var inputData = inputBuffer.getChannelData(channel);
+              for (var sample = 0; sample < inputBuffer.length; sample++) {
+                var value = inputData[sample];
+                this.total += value * value;
+                this.count += 1;
+              }
             }
           }
-        }
-
-        b.addEventListener("click", function(e) {
-          if (!clicked) {
-            total = 0;
-            count = 0;
+        },
+        streamFunc: function (stream) {
+          var ac = new AudioContext();
+          var source = ac.createMediaStreamSource(stream);
+          var scriptNode = ac.createScriptProcessor(4096, 1, 1);
+          scriptNode.onaudioprocess = this.onaudioprocess.bind(this);
+          source.connect(scriptNode);
+          scriptNode.connect(ac.destination); // Needed for Chrome
+          window.audioSource = source; // Needed for Firefox
+          this.nextVote();
+        },
+        takeSample: function (e) {
+          if (!this.clicked) {
+            this.total = 0;
+            this.count = 0;
             e.target.innerHTML = "Stop Sampling";
-            clicked = true;
+            this.clicked = true;
           } else {
-            elem.innerHTML = elem.innerHTML + 100 * Math.sqrt(total / count);
+            this.container.lastChild.innerHTML += 100 * Math.sqrt(this.total / this.count);
             e.target.innerHTML = "Sample Volume";
-            clicked = false;
-            index += 1;
-            elem = document.createElement('div')
-            elem.innerHTML = talks[index] + ": "
-            document.body.appendChild(elem);
+            this.clicked = false;
+            this.index += 1;
+            this.nextVote();
           }
-        });
+        },
       };
-      navigator.mediaDevices.getUserMedia({audio: true}).then(streamFunc);
+
+      VolumeSampler.start(document.querySelector("button"), document.querySelector("#audio"))
     </script>
   </body>
 </html>
